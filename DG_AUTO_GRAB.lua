@@ -1,6 +1,5 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local character = player.Character or player.CharacterAdded:Wait()
@@ -11,136 +10,215 @@ local stealDuration = 3
 local grabEnabled = true
 local stealingObjects = {}
 local grabCounter = 0
+local currentGrabProgress = 0
 
--- UI Setup
+-- Create Main GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DG_AUTO_GRAB_UI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
-local bgPanel = Instance.new("Frame")
-bgPanel.Name = "BG"
-bgPanel.Size = UDim2.new(0, 280, 0, 220)
-bgPanel.Position = UDim2.new(0, 15, 0, 15)
-bgPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-bgPanel.BorderSizePixel = 0
-bgPanel.Parent = screenGui
+-- Main Panel with gradient effect
+local mainPanel = Instance.new("Frame")
+mainPanel.Name = "MainPanel"
+mainPanel.Size = UDim2.new(0, 350, 0, 280)
+mainPanel.Position = UDim2.new(0, 20, 0, 20)
+mainPanel.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+mainPanel.BorderSizePixel = 0
+mainPanel.Parent = screenGui
 
-local bgCorner = Instance.new("UICorner")
-bgCorner.CornerRadius = UDim.new(0, 12)
-bgCorner.Parent = bgPanel
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 15)
+panelCorner.Parent = mainPanel
 
-local bgStroke = Instance.new("UIStroke")
-bgStroke.Color = Color3.fromRGB(255, 100, 100)
-bgStroke.Thickness = 2
-bgStroke.Parent = bgPanel
+local panelStroke = Instance.new("UIStroke")
+panelStroke.Color = Color3.fromRGB(255, 100, 100)
+panelStroke.Thickness = 3
+panelStroke.Parent = mainPanel
 
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, -20, 0, 40)
-titleText.Position = UDim2.new(0, 10, 0, 10)
-titleText.BackgroundTransparency = 1
-titleText.TextColor3 = Color3.fromRGB(255, 120, 120)
-titleText.TextSize = 22
-titleText.Font = Enum.Font.GothamBold
-titleText.Text = "⚡ DG AUTO GRAB"
-titleText.Parent = bgPanel
+-- Title with animation
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, -20, 0, 50)
+titleLabel.Position = UDim2.new(0, 10, 0, 10)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+titleLabel.TextSize = 28
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Text = "⚡ DG AUTO STEAL"
+titleLabel.Parent = mainPanel
 
+-- Toggle Button with hover effect
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(1, -20, 0, 45)
-toggleButton.Position = UDim2.new(0, 10, 0, 55)
+toggleButton.Name = "ToggleBtn"
+toggleButton.Size = UDim2.new(1, -20, 0, 50)
+toggleButton.Position = UDim2.new(0, 10, 0, 70)
 toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.TextSize = 16
+toggleButton.TextSize = 18
 toggleButton.Font = Enum.Font.GothamBold
-toggleButton.Text = "▶ GRAB: ON"
+toggleButton.Text = "▶ START STEALING"
 toggleButton.BorderSizePixel = 0
-toggleButton.Parent = bgPanel
+toggleButton.AutoButtonColor = false
+toggleButton.Parent = mainPanel
 
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 8)
-toggleCorner.Parent = toggleButton
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 10)
+btnCorner.Parent = toggleButton
 
-local statusText = Instance.new("TextLabel")
-statusText.Size = UDim2.new(1, -20, 0, 30)
-statusText.Position = UDim2.new(0, 10, 0, 110)
-statusText.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-statusText.TextColor3 = Color3.fromRGB(100, 255, 100)
-statusText.TextSize = 13
-statusText.Font = Enum.Font.Gotham
-statusText.Text = "✓ Ready"
-statusText.BorderSizePixel = 0
-statusText.Parent = bgPanel
+-- Status display
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "Status"
+statusLabel.Size = UDim2.new(1, -20, 0, 30)
+statusLabel.Position = UDim2.new(0, 10, 0, 130)
+statusLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+statusLabel.TextSize = 14
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Text = "✓ Ready to steal"
+statusLabel.BorderSizePixel = 0
+statusLabel.Parent = mainPanel
 
 local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 6)
-statusCorner.Parent = statusText
+statusCorner.CornerRadius = UDim.new(0, 8)
+statusCorner.Parent = statusLabel
 
-local counterText = Instance.new("TextLabel")
-counterText.Size = UDim2.new(1, -20, 0, 25)
-counterText.Position = UDim2.new(0, 10, 0, 175)
-counterText.BackgroundTransparency = 1
-counterText.TextColor3 = Color3.fromRGB(255, 150, 150)
-counterText.TextSize = 12
-counterText.Font = Enum.Font.GothamBold
-counterText.Text = "Grabbed: 0"
-counterText.Parent = bgPanel
+-- Counter
+local counterLabel = Instance.new("TextLabel")
+counterLabel.Name = "Counter"
+counterLabel.Size = UDim2.new(1, -20, 0, 25)
+counterLabel.Position = UDim2.new(0, 10, 0, 170)
+counterLabel.BackgroundTransparency = 1
+counterLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+counterLabel.TextSize = 14
+counterLabel.Font = Enum.Font.GothamBold
+counterLabel.Text = "Items Stolen: 0"
+counterLabel.Parent = mainPanel
 
--- GRAB LOGIC
-local function grabObject(obj)
+-- PROGRESS BAR AT BOTTOM
+local progressBarBg = Instance.new("Frame")
+progressBarBg.Name = "ProgressBarBg"
+progressBarBg.Size = UDim2.new(1, -20, 0, 20)
+progressBarBg.Position = UDim2.new(0, 10, 0, 250)
+progressBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+progressBarBg.BorderSizePixel = 0
+progressBarBg.Parent = mainPanel
+
+local progressCorner = Instance.new("UICorner")
+progressCorner.CornerRadius = UDim.new(0, 6)
+progressCorner.Parent = progressBarBg
+
+-- Actual progress fill
+local progressBar = Instance.new("Frame")
+progressBar.Name = "ProgressBar"
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+progressBar.BorderSizePixel = 0
+progressBar.Parent = progressBarBg
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 6)
+fillCorner.Parent = progressBar
+
+-- Progress text
+local progressText = Instance.new("TextLabel")
+progressText.Name = "ProgressText"
+progressText.Size = UDim2.new(1, 0, 1, 0)
+progressText.BackgroundTransparency = 1
+progressText.TextColor3 = Color3.fromRGB(255, 255, 255)
+progressText.TextSize = 12
+progressText.Font = Enum.Font.GothamBold
+progressText.Text = "0%"
+progressText.ZIndex = 2
+progressText.Parent = progressBarBg
+
+-- Hover effects
+local function onMouseEnter()
+    if grabEnabled then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 120, 120)
+    end
+end
+
+local function onMouseLeave()
+    if grabEnabled then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    end
+end
+
+toggleButton.MouseEnter:Connect(onMouseEnter)
+toggleButton.MouseLeave:Connect(onMouseLeave)
+
+-- Toggle functionality
+toggleButton.MouseButton1Click:Connect(function()
+    grabEnabled = not grabEnabled
+    if grabEnabled then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+        toggleButton.Text = "▶ START STEALING"
+        statusLabel.Text = "✓ Ready to steal"
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 110)
+        toggleButton.Text = "⏸ STEALING PAUSED"
+        statusLabel.Text = "⏸ Paused"
+    end
+end)
+
+-- Main grab function
+local function stealObject(obj)
     if obj:FindFirstChild("Humanoid") then return false end
     if stealingObjects[obj] then return false end
     if not obj.Parent or not obj:IsDescendantOf(workspace) then return false end
     
     local name = obj.Name
+    local startTime = tick()
     stealingObjects[obj] = true
     
-    -- Weld to hand
-    local hand = character:FindFirstChild("RightHand") 
-        or character:FindFirstChild("LeftHand")
-        or character:FindFirstChild("RightUpperArm")
-        or character:FindFirstChild("LeftUpperArm")
-        or humanoidRootPart
-    
-    local success = pcall(function()
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = hand
-        weld.Part1 = obj
-        weld.Parent = obj
+    local grabConnection
+    grabConnection = RunService.Heartbeat:Connect(function()
+        if not obj.Parent or not obj:IsDescendantOf(workspace) then
+            grabConnection:Disconnect()
+            stealingObjects[obj] = nil
+            return
+        end
         
-        obj.CanCollide = false
-        if obj:IsA("BasePart") then
-            obj.TopSurface = Enum.SurfaceType.Smooth
-            obj.BottomSurface = Enum.SurfaceType.Smooth
+        local elapsed = tick() - startTime
+        local progress = math.min(elapsed / stealDuration, 1)
+        currentGrabProgress = progress
+        
+        -- Update progress bar
+        progressBar.Size = UDim2.new(progress, 0, 1, 0)
+        progressText.Text = math.floor(progress * 100) .. "%"
+        
+        if progress >= 1 then
+            grabConnection:Disconnect()
+            
+            -- Weld to hand
+            local hand = character:FindFirstChild("RightHand") 
+                or character:FindFirstChild("LeftHand")
+                or character:FindFirstChild("RightUpperArm")
+                or character:FindFirstChild("LeftUpperArm")
+                or humanoidRootPart
+            
+            pcall(function()
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = hand
+                weld.Part1 = obj
+                weld.Parent = obj
+                obj.CanCollide = false
+            end)
+            
+            grabCounter = grabCounter + 1
+            counterLabel.Text = "Items Stolen: " .. grabCounter
+            statusLabel.Text = "✓ Stole: " .. name
+            progressBar.Size = UDim2.new(0, 0, 1, 0)
+            progressText.Text = "0%"
+            stealingObjects[obj] = nil
         end
     end)
     
-    if success then
-        grabCounter = grabCounter + 1
-        counterText.Text = "Grabbed: " .. grabCounter
-        statusText.Text = "✓ Got: " .. name
-        stealingObjects[obj] = nil
-        return true
-    end
-    
-    stealingObjects[obj] = nil
-    return false
+    return true
 end
 
--- TOGGLE
-toggleButton.MouseButton1Click:Connect(function()
-    grabEnabled = not grabEnabled
-    if grabEnabled then
-        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-        toggleButton.Text = "▶ GRAB: ON"
-        statusText.Text = "✓ Ready"
-    else
-        toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 110)
-        toggleButton.Text = "⏸ GRAB: OFF"
-        statusText.Text = "⏸ Paused"
-    end
-end)
-
--- AUTO GRAB LOOP
+-- Auto grab loop
 RunService.Heartbeat:Connect(function()
     if not grabEnabled or not character or not humanoidRootPart then return end
     
@@ -149,7 +227,7 @@ RunService.Heartbeat:Connect(function()
     for _, obj in pairs(nearby) do
         if obj and obj.Parent and obj.Parent ~= character then
             if not obj.Parent:FindFirstChild("Humanoid") then
-                if grabObject(obj) then
+                if stealObject(obj) then
                     break
                 end
             end
@@ -157,10 +235,12 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- CHARACTER RESPAWN
+-- Character respawn
 player.CharacterAdded:Connect(function(newChar)
     character = newChar
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     stealingObjects = {}
-    statusText.Text = "✓ Ready"
+    statusLabel.Text = "✓ Ready to steal"
+    progressBar.Size = UDim2.new(0, 0, 1, 0)
+    progressText.Text = "0%"
 end)
