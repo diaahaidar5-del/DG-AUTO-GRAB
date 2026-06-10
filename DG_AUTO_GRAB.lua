@@ -9,6 +9,8 @@ local grabRadius = 63
 local stealDuration = 3
 local grabEnabled = true
 local stealingObjects = {}
+local grabCooldown = 0.5
+local lastGrabTime = 0
 
 -- Main Screen GUI
 local screenGui = Instance.new("ScreenGui")
@@ -212,14 +214,19 @@ local function stealObject(object)
         if progress >= 1 then
             connection:Disconnect()
             
-            -- Weld object to player
+            -- Weld object to player hand
             if character and humanoidRootPart then
                 local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("RightUpperArm") or humanoidRootPart
-                if hand then
+                if hand and object and object.Parent then
                     local weld = Instance.new("WeldConstraint")
                     weld.Part0 = hand
                     weld.Part1 = object
                     weld.Parent = object
+                    
+                    -- Make object not collideable with ground
+                    pcall(function()
+                        object.CanCollide = false
+                    end)
                 end
             end
             
@@ -244,6 +251,7 @@ toggleButton.MouseButton1Click:Connect(function()
         toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
         toggleButton.Text = "▶ GRAB: ON"
         statusText.Text = "✓ Ready to grab"
+        lastGrabTime = 0
     else
         toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 110)
         toggleButton.Text = "⏸ GRAB: OFF"
@@ -251,16 +259,22 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Main grab loop
+-- Main grab loop - AGGRESSIVE AUTO GRAB
 RunService.Heartbeat:Connect(function()
     if not grabEnabled or not character or not humanoidRootPart then return end
+    
+    -- Check cooldown
+    if tick() - lastGrabTime < grabCooldown then return end
     
     local partsInRadius = workspace:FindPartBoundsInRadius(humanoidRootPart.Position, grabRadius)
     
     for _, part in pairs(partsInRadius) do
         if part and part.Parent and part.Parent ~= character then
+            -- Don't grab characters
             if not part.Parent:FindFirstChild("Humanoid") then
+                -- Try to grab this part
                 if stealObject(part) then
+                    lastGrabTime = tick()
                     break
                 end
             end
@@ -274,4 +288,5 @@ player.CharacterAdded:Connect(function(newCharacter)
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     stealingObjects = {}
     statusText.Text = "✓ Ready to grab"
+    lastGrabTime = 0
 end)
